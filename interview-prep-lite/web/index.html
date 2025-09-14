@@ -1,0 +1,75 @@
+﻿<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Interview Prep Lite</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; margin: 24px; }
+    textarea { width: 100%; height: 180px; }
+    .card { border: 1px solid #ddd; border-radius: 10px; padding: 16px; margin: 12px 0; }
+    button { padding: 10px 16px; border-radius: 8px; border: 1px solid #444; background: #fff; cursor: pointer; }
+    button:hover { background: #f0f0f0; }
+  </style>
+</head>
+<body>
+  <h1>Interview Prep Lite</h1>
+  <div class="card">
+    <h3>1) Paste an interview email</h3>
+    <textarea id="email"></textarea><br/><br/>
+    <button onclick="parseEmail()">Parse Email</button>
+    <div id="parsed"></div>
+  </div>
+
+  <div class="card">
+    <h3>2) Generate Prep Questions</h3>
+    <button onclick="generatePrep()">Generate Prep</button>
+    <div id="prep"></div>
+  </div>
+
+  <div class="card">
+    <h3>3) Suggest Schedule Blocks</h3>
+    <button onclick="schedule()">Suggest</button>
+    <div id="sched"></div>
+  </div>
+
+<script>
+const API = 'http://localhost:8000';
+let parsed = null;
+
+async function parseEmail(){
+  const text = document.getElementById('email').value;
+  const res = await fetch(API + '/parse_email', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({text})
+  });
+  parsed = await res.json();
+  document.getElementById('parsed').innerHTML =
+    `<p><b>Company:</b> ${parsed.company||'-'}<br/>
+       <b>Role:</b> ${parsed.role||'-'}<br/>
+       <b>Type:</b> ${parsed.type}<br/>
+       <b>When:</b> ${parsed.when_iso||'-'}</p>`;
+}
+
+async function generatePrep(){
+  if(!parsed){ alert('Parse an email first.'); return; }
+  const res = await fetch(API + '/generate_prep', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({company: parsed.company, role: parsed.role, type: parsed.type})
+  });
+  const data = await res.json();
+  document.getElementById('prep').innerHTML =
+    `<p><b>${data.summary}</b></p><ol>` + data.questions.map(q=>`<li>${q}</li>`).join('') + '</ol>';
+}
+
+async function schedule(){
+  const res = await fetch(API + '/schedule_suggestions', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({when_iso: parsed? parsed.when_iso: null, blocks: 3, minutes_each: 60})
+  });
+  const data = await res.json();
+  document.getElementById('sched').innerHTML =
+    '<ol>' + data.suggestions.map(s=>`<li>${s}</li>`).join('') + '</ol>';
+}
+</script>
+</body>
+</html>
